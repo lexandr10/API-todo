@@ -1,7 +1,7 @@
 import logging
 
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,7 @@ from src.database.db import get_db
 from src.schemas.token_schemas import TokenResponse, RefreshTokenRequest
 from src.services.auth_service import AuthService, oauth2_scheme
 from src.schemas.user_schemas import UserCreate, UserResponse
+from src.services.service_email import send_email
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -21,9 +22,15 @@ def get_auth_service(db: AsyncSession = Depends(get_db)):
 
 @router.post("/register", response_model=UserResponse)
 async def register(
-    user_data: UserCreate, auth_service: AuthService = Depends(get_auth_service)
+    user_data: UserCreate,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    auth_service: AuthService = Depends(get_auth_service),
 ):
     user = await auth_service.register_user(user_data)
+    background_tasks.add_task(
+        send_email, user_data.email, user.username, str(request.base_url)
+    )
     return user
 
 
@@ -34,7 +41,7 @@ async def login(
     auth_service: AuthService = Depends(get_auth_service),
 ):
     user = await auth_service.authenticate(form_data.username, form_data.password)
-    access_token = await auth_service.create_access_token(user.username)
+    access_token = auth_service.create_access_token(user.username)
     refresh_token = await auth_service.create_refresh_token(
         user.id,
         ip_address=request.client.host if request else None,
@@ -52,7 +59,6 @@ async def refresh_token(
     auth_service: AuthService = Depends(get_auth_service),
 ):
     user = await auth_service.validate_refresh_token(refresh_token_data.refresh_token)
-    await auth_service.revoke_refresh_token(refresh_token_data.refresh_token)
 
     access_token = auth_service.create_access_token(user.username)
     refresh_token = await auth_service.create_refresh_token(
@@ -60,6 +66,8 @@ async def refresh_token(
         ip_address=request.client.host if request else None,
         user_agent=request.headers.get("user-agent") if request else None,
     )
+
+    await auth_service.revoke_refresh_token(refresh_token_data.refresh_token)
 
     return TokenResponse(
         access_token=access_token, refresh_token=refresh_token, token_type="bearer"

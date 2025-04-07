@@ -1,6 +1,15 @@
 from datetime import datetime
+from enum import Enum
 
-from sqlalchemy import String, DateTime, func, ForeignKey, Text
+from sqlalchemy import (
+    String,
+    DateTime,
+    func,
+    ForeignKey,
+    Text,
+    Enum as SqlaEnum,
+    Boolean,
+)
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,12 +37,24 @@ class Todo(Base):
     user: Mapped["User"] = relationship("User", backref="todos", lazy="joined")
 
 
+class UserRole(str, Enum):
+    USER = "USER"
+    MODERATOR = "MODERATOR"
+    ADMIN = "ADMIN"
+
+
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(unique=True, nullable=False)
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
     hash_password: Mapped[str] = mapped_column(nullable=False)
+    role: Mapped[UserRole] = mapped_column(
+        SqlaEnum(UserRole), default=UserRole.USER, nullable=False
+    )
+    avatar: Mapped[str] = mapped_column(String(255), nullable=True)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken", back_populates="user"
     )

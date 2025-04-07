@@ -18,3 +18,13 @@ class UserService:
 
     async def get_by_username(self, username: str) -> User | None:
         return await self.user_controller.get_by_username(username)
+
+    async def get_user_by_email(self, email: str) -> User | None:
+        return await self.user_controller.get_user_by_email(email)
+
+    async def confirmed_email(self, email: str) -> User | None:
+        user = await self.user_controller.confirmed_email(email)
+        return user
+
+    async def update_avatar_url(self, email: str, url: str) -> User:
+        return await self.user_controller.update_avatar_url(email, url)

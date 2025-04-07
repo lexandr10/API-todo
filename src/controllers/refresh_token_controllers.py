@@ -31,7 +31,7 @@ class RefreshTokenController(BaseController):
         stmt = select(self.model).where(
             RefreshToken.token_hash == token_hash,
             RefreshToken.expires_at > current_time,
-            RefreshToken.revoked_at > current_time,
+            RefreshToken.revoked_at is None,
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()

@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
+from src.models.models import UserRole
+
 
 class UserSchema(BaseModel):
     username: str = Field(
@@ -16,4 +18,6 @@ class UserCreate(UserSchema):
 
 class UserResponse(UserSchema):
     id: int
+    avatar: str | None
+    role: UserRole
     model_config = ConfigDict(from_attributes=True)
